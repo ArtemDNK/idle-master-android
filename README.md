@@ -31,9 +31,6 @@
 * **Командная строка**: `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 * **GitHub Actions**: workflow `.github/workflows/build.yml` собирает APK на каждый push, файл — в Artifacts.
 
-APK подписывается ключом `app/app-signing.keystore` (пароль `idlemaster`), чтобы обновления ставились поверх.
-Для публичного распространения замените ключ на свой.
-
 ## Безопасность
 
 Пароль не сохраняется. После входа хранится только refresh-токен Steam (в приватном хранилище приложения),
