@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Idle Master</string>
+    <string name="channel_idle">Фарм карточек</string>
+    <string name="channel_events">События</string>
+
+    <!-- actions -->
+    <string name="start">Начать</string>
+    <string name="pause">Пауза</string>
+    <string name="resume">Продолжить</string>
+    <string name="stop">Стоп</string>
+    <string name="skip">Пропустить</string>
+    <string name="to_blacklist">В чёрный список</string>
+    <string name="reload">Обновить значки</string>
+    <string name="settings">Настройки</string>
+    <string name="statistics">Статистика</string>
+    <string name="sign_out">Выйти</string>
+    <string name="sign_in">Войти</string>
+    <string name="cancel">Отмена</string>
+    <string name="ok">ОК</string>
+    <string name="save">Сохранить</string>
+    <string name="back">Назад</string>
+    <string name="close">Закрыть</string>
+    <string name="open_store">Открыть в магазине</string>
+    <string name="error">Ошибка</string>
+
+    <!-- login -->
+    <string name="login_title">Вход в Steam</string>
+    <string name="login_hint">Приложение входит в Steam как отдельный клиент и сообщает Steam, что игры запущены — так же, как делал steam-idle.exe на ПК. Пароль никуда не сохраняется: после входа хранится только токен сессии.</string>
+    <string name="username">Логин Steam</string>
+    <string name="password">Пароль</string>
+    <string name="signing_in">Вход…</string>
+    <string name="guard_choose_title">Steam Guard</string>
+    <string name="guard_choose_text">Подтвердите вход в мобильном приложении Steam или введите код оттуда.</string>
+    <string name="guard_approve_in_app">Подтвердить в приложении</string>
+    <string name="guard_enter_code">Ввести код</string>
+    <string name="guard_waiting">Ожидаем подтверждения в приложении Steam…</string>
+    <string name="guard_device_code">Код из мобильного приложения Steam</string>
+    <string name="guard_email_code">Код из письма Steam</string>
+    <string name="guard_email_sent">Код отправлен на %1$s</string>
+    <string name="guard_wrong_code">Неверный код, попробуйте ещё раз</string>
+    <string name="code">Код</string>
+
+    <!-- status -->
+    <string name="signed_in_as">Вход выполнен: %1$s</string>
+    <string name="conn_offline">Steam: не в сети</string>
+    <string name="conn_connecting">Steam: подключение…</string>
+    <string name="conn_online">Steam: в сети</string>
+    <string name="conn_reconnecting">Steam: переподключение…</string>
+    <string name="playing_blocked">На этом аккаунте сейчас запущена игра на другом устройстве. Пока она открыта, Steam не засчитывает время — фарм продолжится сам, когда вы её закроете.</string>
+    <string name="playing_blocked_short">игра запущена на другом устройстве</string>
+    <string name="status_stopped">Не в игре</string>
+    <string name="status_loading">Чтение страницы значков…</string>
+    <string name="status_loading_page">Чтение страницы значков %1$s</string>
+    <string name="status_retry">Значки не загрузились, повтор через %1$d с</string>
+    <string name="status_waiting_steam">Ожидание подключения к Steam…</string>
+    <string name="status_next_game">Загрузка следующей игры…</string>
+    <string name="status_paused">Фарм на паузе</string>
+    <string name="status_idling">Сейчас в игре</string>
+    <string name="idling_complete">Фарм завершён — карточек больше нет</string>
+    <string name="notif_idling_many">Фарм %1$d игр одновременно</string>
+    <string name="notif_cards_left">Осталось %1$d карт в %2$d играх</string>
+    <string name="cards_remaining">Осталось карт: %1$d</string>
+    <string name="games_left">%1$d игр осталось, %2$d запущено</string>
+    <string name="drops_left_game">%1$d карт выпадет</string>
+    <string name="hours_on_record">%1$s ч в игре</string>
+    <string name="next_check">Следующая проверка: %1$s</string>
+    <string name="tap_check_now">нажмите, чтобы проверить сейчас</string>
+    <string name="idling_now_header">Сейчас запущено</string>
+    <string name="queue_header">Очередь (%1$d)</string>
+    <string name="empty_queue">Нажмите «Начать», чтобы прочитать значки и начать фарм.</string>
+
+    <!-- battery -->
+    <string name="battery_title">Отключите оптимизацию батареи</string>
+    <string name="battery_text">Иначе Android может остановить фарм в фоне. Также разрешите уведомления.</string>
+    <string name="battery_button">Разрешить работу в фоне</string>
+
+    <!-- settings -->
+    <string name="settings_mode">Режим фарма</string>
+    <string name="mode_fast">Быстрый режим: одновременно 5 мин, затем каждую игру по 5 с</string>
+    <string name="mode_one_then_many">Игры с 2+ часами по одной, затем остальные одновременно</string>
+    <string name="mode_many_then_one">Одновременно до 2 часов, затем по одной</string>
+    <string name="mode_one_by_one">Каждую игру по отдельности (медленно)</string>
+    <string name="mode_whitelist">Только белый список, без проверки карт (накрутка часов)</string>
+    <string name="settings_sort">Порядок</string>
+    <string name="sort_default">Как на странице значков</string>
+    <string name="sort_most">Сначала игры с наибольшим числом карт</string>
+    <string name="sort_least">Сначала игры с наименьшим числом карт</string>
+    <string name="settings_other">Прочее</string>
+    <string name="only_played">Фармить только игры, в которые уже играли</string>
+    <string name="show_username">Показывать имя профиля Steam</string>
+    <string name="max_simultaneous">Игр одновременно: %1$d</string>
+    <string name="blacklist">Чёрный список</string>
+    <string name="whitelist">Белый список</string>
+    <string name="list_hint">App ID через пробел, запятую или с новой строки</string>
+    <string name="list_count">%1$d игр</string>
+
+    <!-- stats -->
+    <string name="stats_session">Эта сессия</string>
+    <string name="stats_total">Всего</string>
+    <string name="stats_time">Время фарма: %1$s</string>
+    <string name="stats_cards">Получено карт: %1$d</string>
+    <string name="stats_cards_left">Осталось карт: %1$d</string>
+</resources>
