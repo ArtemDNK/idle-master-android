@@ -6,6 +6,7 @@ import com.idlemaster.android.data.DebugLog
 import com.idlemaster.android.data.Settings
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
 import `in`.dragonbra.javasteam.steam.authentication.AuthenticationException
 import `in`.dragonbra.javasteam.steam.authentication.IAuthenticator
@@ -26,6 +27,7 @@ import `in`.dragonbra.javasteam.steam.steamclient.callbacks.DisconnectedCallback
 import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration
 import `in`.dragonbra.javasteam.types.SteamID
 import `in`.dragonbra.javasteam.util.Utils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -240,7 +243,9 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
             }, "steam-callbacks").apply { isDaemon = true; start() }
         }
         _status.update { it.copy(state = ConnState.CONNECTING, lastError = null) }
-        client!!.connect()
+        val c = client!!
+        // connect() resolves the server list over the network — never on the main thread.
+        scope.launch { runCatching { c.connect() }.onFailure { DebugLog.e(TAG, "connect", it) } }
     }
 
     private fun disconnectInternal(userInitiated: Boolean) {
@@ -303,7 +308,42 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
             }
             val session = auth!!.beginAuthSessionViaCredentials(details).await()
             DebugLog.i(TAG, "auth session started, waiting for Steam Guard")
-            val poll = session.pollingWaitForResult().await()
+
+            // Steam closes a CM socket that stays silent for ~15-20 s, and before logon nothing
+            // else is sent while the user approves in the app or types a code. So poll the auth
+            // session every 5 s: it keeps the socket alive and also catches an in-app approval
+            // even while the "enter code" dialog is open.
+            val done = CompletableDeferred<AuthPollResult>()
+            val waitJob = scope.launch {
+                try {
+                    done.complete(session.pollingWaitForResult().await())
+                } catch (e: Exception) {
+                    done.completeExceptionally(e)
+                }
+            }
+            val keepAlive = scope.launch {
+                while (isActive && !done.isCompleted) {
+                    delay(5_000)
+                    try {
+                        session.pollAuthSessionStatus().await()?.let {
+                            DebugLog.i(TAG, "approved (keep-alive poll)")
+                            done.complete(it)
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        DebugLog.w(TAG, "keep-alive poll: ${e.message}")
+                    }
+                }
+            }
+            val poll = try {
+                done.await()
+            } finally {
+                keepAlive.cancel()
+                waitJob.cancel()
+                codeAnswer?.takeIf { !it.isDone }?.cancel(true)
+                confirmAnswer?.takeIf { !it.isDone }?.cancel(true)
+            }
             DebugLog.i(TAG, "auth ok for ${poll.accountName}")
             _authPrompt.value = null
 
