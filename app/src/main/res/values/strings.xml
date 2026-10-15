@@ -23,6 +23,9 @@
     <string name="close">Закрыть</string>
     <string name="open_store">Открыть в магазине</string>
     <string name="error">Ошибка</string>
+    <string name="log">Журнал</string>
+    <string name="copy">Копировать</string>
+    <string name="copied">Журнал скопирован</string>
 
     <!-- login -->
     <string name="login_title">Вход в Steam</string>

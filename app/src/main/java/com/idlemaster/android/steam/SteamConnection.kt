@@ -1,8 +1,8 @@
 package com.idlemaster.android.steam
 
 import android.util.Base64
-import android.util.Log
 import com.idlemaster.android.data.Account
+import com.idlemaster.android.data.DebugLog
 import com.idlemaster.android.data.Settings
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import `in`.dragonbra.javasteam.enums.EResult
@@ -23,6 +23,7 @@ import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
 import `in`.dragonbra.javasteam.steam.steamclient.callbackmgr.CallbackManager
 import `in`.dragonbra.javasteam.steam.steamclient.callbacks.ConnectedCallback
 import `in`.dragonbra.javasteam.steam.steamclient.callbacks.DisconnectedCallback
+import `in`.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration
 import `in`.dragonbra.javasteam.types.SteamID
 import `in`.dragonbra.javasteam.util.Utils
 import kotlinx.coroutines.CompletableDeferred
@@ -94,6 +95,8 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     /** Whether we should stay connected (reconnect after network drops). */
     @Volatile private var wantOnline = false
     @Volatile private var pendingCredentials: Pair<String, String>? = null
+    /** Connection attempts made for the current password sign-in (a CM server may be unreachable). */
+    private var loginConnectAttempts = 0
     @Volatile private var loginResult: CompletableDeferred<Result<Unit>>? = null
     @Volatile private var currentGames: List<Int> = emptyList()
     @Volatile private var reconnectJob: Job? = null
@@ -125,6 +128,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
         val deferred = CompletableDeferred<Result<Unit>>()
         loginResult = deferred
         pendingCredentials = username.trim() to password
+        loginConnectAttempts = 1
         wantOnline = true
         settings.lastAccountName = username.trim()
         startClientAndConnect()
@@ -168,7 +172,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
         val list = appIds.distinct().take(Settings.MAX_STEAM_GAMES)
         if (list == currentGames) return
         currentGames = list
-        if (isOnline) runCatching { sendGamesPlayed() }.onFailure { Log.w(TAG, "gamesPlayed", it) }
+        if (isOnline) runCatching { sendGamesPlayed() }.onFailure { DebugLog.w(TAG, "gamesPlayed", it) }
     }
 
     /** Suspends until the session is online (or [timeoutMs] passes). */
@@ -195,7 +199,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
             setAccessToken(res.accessToken)
             res.accessToken
         } catch (e: Exception) {
-            Log.w(TAG, "generateAccessTokenForApp failed", e)
+            DebugLog.w(TAG, "generateAccessTokenForApp failed", e)
             cached
         }
     }
@@ -205,7 +209,8 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     private fun startClientAndConnect() {
         reconnectJob?.cancel()
         if (client == null) {
-            val c = SteamClient()
+            val config = SteamConfiguration.create { it.withConnectionTimeout(15_000L) }
+            val c = SteamClient(config)
             val m = CallbackManager(c)
             client = c
             manager = m
@@ -229,7 +234,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
                     try {
                         m.runWaitCallbacks(1000L)
                     } catch (t: Throwable) {
-                        Log.e(TAG, "callback loop", t)
+                        DebugLog.e(TAG, "callback loop", t)
                     }
                 }
             }, "steam-callbacks").apply { isDaemon = true; start() }
@@ -268,6 +273,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     // ------------------------------------------------------------------ callbacks
 
     private fun onConnected() {
+        DebugLog.i(TAG, "connected to ${client?.currentEndpoint}")
         val creds = pendingCredentials
         if (creds != null) {
             pendingCredentials = null
@@ -285,6 +291,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
 
     private suspend fun authenticateWithCredentials(username: String, password: String) {
         _status.update { it.copy(state = ConnState.AUTHENTICATING, accountName = username) }
+        DebugLog.i(TAG, "begin credential auth for $username")
         try {
             val details = AuthSessionDetails().apply {
                 this.username = username
@@ -295,7 +302,9 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
                 authenticator = UiAuthenticator()
             }
             val session = auth!!.beginAuthSessionViaCredentials(details).await()
+            DebugLog.i(TAG, "auth session started, confirmations=${session.allowedConfirmations.map { it.confirmationType }}")
             val poll = session.pollingWaitForResult().await()
+            DebugLog.i(TAG, "auth ok for ${poll.accountName}")
             _authPrompt.value = null
 
             poll.newGuardData?.let { settings.setGuardData(poll.accountName, it) }
@@ -310,7 +319,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
                 e.cause is AuthenticationException -> e.cause?.message
                 else -> e.message
             } ?: e.javaClass.simpleName
-            Log.w(TAG, "credential auth failed", e)
+            DebugLog.w(TAG, "credential auth failed", e)
             failLogin(msg)
         }
     }
@@ -328,6 +337,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     }
 
     private fun onLoggedOn(cb: LoggedOnCallback) {
+        DebugLog.i(TAG, "logOn result=${cb.result} extended=${cb.extendedResult}")
         if (cb.result == EResult.OK) {
             reconnectAttempt = 0
             val sid = cb.clientSteamID?.convertToUInt64()
@@ -342,7 +352,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
             return
         }
 
-        Log.w(TAG, "logOn failed: ${cb.result} / ${cb.extendedResult}")
+        DebugLog.w(TAG, "logOn failed: ${cb.result} / ${cb.extendedResult}")
         when (cb.result) {
             EResult.InvalidPassword, EResult.AccessDenied, EResult.Expired, EResult.Revoked,
             EResult.InvalidSignature, EResult.AccountLogonDenied -> {
@@ -360,7 +370,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     }
 
     private fun onLoggedOff(cb: LoggedOffCallback) {
-        Log.i(TAG, "logged off: ${cb.result}")
+        DebugLog.i(TAG, "logged off: ${cb.result}")
         _status.update { it.copy(state = ConnState.RECONNECTING, lastError = "Steam: ${cb.result}") }
         // Disconnected callback follows and schedules the reconnect.
         if (cb.result == EResult.LogonSessionReplaced || cb.result == EResult.LoggedInElsewhere) {
@@ -369,10 +379,24 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
     }
 
     private fun onDisconnected(cb: DisconnectedCallback) {
-        Log.i(TAG, "disconnected, userInitiated=${cb.isUserInitiated}")
+        DebugLog.i(TAG, "disconnected, userInitiated=${cb.isUserInitiated}, state=${_status.value.state}")
+        val wasConnecting = _status.value.state == ConnState.CONNECTING
         _status.update { it.copy(state = ConnState.OFFLINE, playingBlocked = false) }
+        // Password sign-in that never reached a server: try other CM servers before giving up.
+        if (loginResult != null && settings.account == null && wasConnecting &&
+            pendingCredentials != null && loginConnectAttempts < 4
+        ) {
+            loginConnectAttempts++
+            DebugLog.i(TAG, "retrying connection, attempt $loginConnectAttempts")
+            _status.update { it.copy(state = ConnState.CONNECTING) }
+            scope.launch {
+                delay(1500)
+                runCatching { client?.connect() }.onFailure { DebugLog.e(TAG, "connect", it) }
+            }
+            return
+        }
         if (loginResult != null && settings.account == null) {
-            failLogin(_status.value.lastError ?: "Не удалось подключиться к Steam")
+            failLogin(_status.value.lastError ?: "Не удалось подключиться к Steam (подробности — в «Журнале»)")
             return
         }
         if (!cb.isUserInitiated && wantOnline) scheduleReconnect()

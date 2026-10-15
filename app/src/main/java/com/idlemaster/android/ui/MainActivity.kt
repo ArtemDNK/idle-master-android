@@ -8,9 +8,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,7 +33,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             IdleMasterTheme {
-                Box(Modifier.fillMaxSize().background(SteamColors.Background)) {
+                Surface(Modifier.fillMaxSize(), color = SteamColors.Background, contentColor = SteamColors.Text) {
                     AppRoot(IdleMasterApp.instance)
                 }
             }
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { MAIN, SETTINGS }
+private enum class Screen { MAIN, SETTINGS, LOG }
 
 @Composable
 private fun AppRoot(app: IdleMasterApp) {
@@ -50,12 +49,18 @@ private fun AppRoot(app: IdleMasterApp) {
     val signedIn = status.state == ConnState.ONLINE || app.settings.account != null
     var screen by rememberSaveable { mutableStateOf(Screen.MAIN) }
 
+    if (screen == Screen.LOG) {
+        BackHandler { screen = Screen.MAIN }
+        LogScreen(onBack = { screen = Screen.MAIN })
+        return
+    }
     if (!signedIn) {
-        LoginScreen(app.steam, app.settings)
+        LoginScreen(app.steam, app.settings, onOpenLog = { screen = Screen.LOG })
         return
     }
     when (screen) {
-        Screen.MAIN -> MainScreen(app, onOpenSettings = { screen = Screen.SETTINGS })
+        Screen.LOG -> Unit
+        Screen.MAIN -> MainScreen(app, onOpenSettings = { screen = Screen.SETTINGS }, onOpenLog = { screen = Screen.LOG })
         Screen.SETTINGS -> {
             BackHandler { screen = Screen.MAIN }
             SettingsScreen(app, onBack = { screen = Screen.MAIN })

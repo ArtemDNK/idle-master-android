@@ -3,7 +3,10 @@ package com.idlemaster.android
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import com.idlemaster.android.data.DebugLog
 import com.idlemaster.android.data.Settings
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 import com.idlemaster.android.engine.IdleEngine
 import com.idlemaster.android.steam.SteamConnection
 import com.idlemaster.android.steam.SteamWeb
@@ -22,6 +25,8 @@ class IdleMasterApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        DebugLog.install()
+        installBouncyCastle()
         settings = Settings(this)
         steam = SteamConnection(settings)
         web = SteamWeb(steam)
@@ -37,6 +42,22 @@ class IdleMasterApp : Application() {
 
         // Sign in with the saved token right away so the main screen shows the account state.
         steam.connectSaved()
+    }
+
+    /**
+     * Android ships a stripped-down provider registered as "BC", and since Android 9 it refuses
+     * most ciphers. JavaSteam asks for "BC" by name and its own insertProviderAt() silently fails
+     * because that name is taken — so the Steam channel handshake breaks and the connection drops.
+     * Replace the platform provider with the full BouncyCastle before JavaSteam's CryptoHelper loads.
+     */
+    private fun installBouncyCastle() {
+        try {
+            Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+            Security.insertProviderAt(BouncyCastleProvider(), 1)
+            DebugLog.i("App", "BouncyCastle provider: ${Security.getProvider("BC")?.javaClass?.name}")
+        } catch (t: Throwable) {
+            DebugLog.e("App", "BouncyCastle install failed", t)
+        }
     }
 
     companion object {

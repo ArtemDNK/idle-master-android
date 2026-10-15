@@ -83,7 +83,7 @@ import com.idlemaster.android.steam.SteamStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(app: IdleMasterApp, onOpenSettings: () -> Unit) {
+fun MainScreen(app: IdleMasterApp, onOpenSettings: () -> Unit, onOpenLog: () -> Unit) {
     val ctx = LocalContext.current
     val engine by app.engine.state.collectAsState()
     val steam by app.steam.status.collectAsState()
@@ -125,6 +125,10 @@ fun MainScreen(app: IdleMasterApp, onOpenSettings: () -> Unit) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.statistics)) },
                                 onClick = { menu = false; showStats = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.log)) },
+                                onClick = { menu = false; onOpenLog() },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.sign_out)) },

@@ -43,7 +43,7 @@ import com.idlemaster.android.steam.SteamConnection
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(steam: SteamConnection, settings: Settings) {
+fun LoginScreen(steam: SteamConnection, settings: Settings, onOpenLog: () -> Unit) {
     var username by remember { mutableStateOf(settings.lastAccountName) }
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -118,6 +118,7 @@ fun LoginScreen(steam: SteamConnection, settings: Settings) {
                 TextButton(onClick = { steam.cancelLogin(); busy = false }) { Text(stringResource(R.string.cancel)) }
             }
         }
+        TextButton(onClick = onOpenLog) { Text(stringResource(R.string.log), color = SteamColors.TextDim) }
     }
 
     when (val p = prompt) {
