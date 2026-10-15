@@ -24,7 +24,12 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          set -o pipefail
+          if ! ./gradlew --no-daemon assembleRelease 2>&1 | tee build.log; then
+            # Surface compiler errors as annotations (visible in the run summary and via the API)
+            grep -E '^e: |What went wrong|^> ' build.log | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
           cp app/build/outputs/apk/release/app-release.apk IdleMaster.apk
 
       - uses: actions/upload-artifact@v4
