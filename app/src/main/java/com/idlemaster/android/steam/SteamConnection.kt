@@ -302,7 +302,7 @@ class SteamConnection(private val settings: Settings) : SteamWeb.WebTokenProvide
                 authenticator = UiAuthenticator()
             }
             val session = auth!!.beginAuthSessionViaCredentials(details).await()
-            DebugLog.i(TAG, "auth session started, confirmations=${session.allowedConfirmations.map { it.confirmationType }}")
+            DebugLog.i(TAG, "auth session started, waiting for Steam Guard")
             val poll = session.pollingWaitForResult().await()
             DebugLog.i(TAG, "auth ok for ${poll.accountName}")
             _authPrompt.value = null
